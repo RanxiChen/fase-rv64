@@ -297,6 +297,8 @@ protected:
     SYSCALL_CLAIM_V2(122, sched_setaffinity);
     SYSCALL_CLAIM_V2(123, sched_getaffinity);
     SYSCALL_CLAIM_V2(124, sched_yield);
+    SYSCALL_CLAIM_V2(125, sched_get_priority_max);
+    SYSCALL_CLAIM_V2(126, sched_get_priority_min);
     SYSCALL_CLAIM_V2(134, sigaction);
     SYSCALL_CLAIM_V2(135, sigprocmask);
     SYSCALL_CLAIM_V2(160, uname);

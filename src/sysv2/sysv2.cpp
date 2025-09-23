@@ -1980,6 +1980,52 @@ SYSCALL_DEFINE_V2(124, sched_yield) {
     ECALL_RET(0, pc+4);
 }
 
+SYSCALL_DEFINE_V2(125, sched_get_priority_max) {
+    int policy = IREG_V(a0);
+    int ret = -EINVAL;
+    switch (policy) {
+        case SCHED_FIFO:
+        case SCHED_RR:
+            ret = MAX_RT_PRIO-1;
+            break;
+        case SCHED_OTHER:
+        case SCHED_IDLE:
+        case SCHED_BATCH:
+        case SCHED_DEADLINE:
+            ret =0;
+            break;
+    }
+    if (ret <0) {
+        LOG_SYSCALL_1("sched_get_priority_max", "%d", policy, "%s", "EINVAL");
+    } else {
+        LOG_SYSCALL_1("sched_get_priority_max", "%d", policy, "%d", ret);
+    }
+    ECALL_RET(ret, pc+4);
+}
+
+SYSCALL_DEFINE_V2(126, sched_get_priority_min) {
+    int policy = IREG_V(a0);
+    int ret = -EINVAL;
+    switch (policy) {
+        case SCHED_FIFO:
+        case SCHED_RR:
+            ret = 1;
+            break;
+        case SCHED_OTHER:
+        case SCHED_IDLE:
+        case SCHED_BATCH:
+        case SCHED_DEADLINE:
+            ret =0;
+            break;
+    }
+    if (ret <0) {
+        LOG_SYSCALL_1("sched_get_priority_min", "%d", policy, "%s", "EINVAL");
+    } else {
+        LOG_SYSCALL_1("sched_get_priority_min", "%d", policy, "%d", ret);
+    }
+    ECALL_RET(ret, pc+4);
+}
+
 SYSCALL_DEFINE_V2(134, sigaction) {
     int32_t signum = IREG_V(a0);
     VirtAddrT act = IREG_V(a1);
