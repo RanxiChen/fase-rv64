@@ -116,7 +116,7 @@ inline void cache_line_copy(void* dst, void *src) {
     // }
     memcpy(dst, src, CACHE_LINE_LEN_BYTE);
 }
-
+#define MAX_RT_PRIO (100)
 #define PGFLAG_R        (1U<<0)
 #define PGFLAG_W        (1U<<1)
 #define PGFLAG_X        (1U<<2)
