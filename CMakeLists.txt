@@ -8,6 +8,14 @@ endif()
 
 set(CMAKE_CXX_STANDARD 20)
 
+include_directories(
+        src
+        )
+
+file(GLOB_RECURSE ALL_CXX_SRC
+        src/*.cpp
+        )
+
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/conf/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/conf/ FILES_MATCHING PATTERN "*.ini")
 
 add_executable(fase-rv64 ${ALL_CXX_SRC})
