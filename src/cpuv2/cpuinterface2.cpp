@@ -16,7 +16,7 @@ void htp_push_interrupt(HTPFrames &frames, uint32_t cpu_id) {
     add.cpuid = cpu_id;
 }
 
-void htp_push_set_mmu(HTPFrames &frames, uint32_t cpu_id, PhysAddrT pgtable, AsidT asid) {
+void htp_push_set_mmu(HTPFrames &frames, uint32_t cpu_id, PageIndexT pgtable, AsidT asid) {
     frames.emplace_back();
     auto &add = frames.back();
     add.opcode = HTOP::mmu;
@@ -46,13 +46,13 @@ void htp_push_flush_tlb_all(HTPFrames &frames, uint32_t cpu_id) {
     add.cpuid = cpu_id;
 }
 
-void htp_push_flush_tlb_vpgidx(HTPFrames &frames, uint32_t cpu_id, VirtAddrT vaddr, AsidT asid) {
+void htp_push_flush_tlb_vpgidx(HTPFrames &frames, uint32_t cpu_id, VPageIndexT vpn, AsidT asid) {
     frames.emplace_back();
     auto &add = frames.back();
     add.opcode = HTOP::ftlb2;
     add.cpuid = cpu_id;
     add.x1 = asid;
-    add.x2 = vaddr;
+    add.x2 = vpn;
 }
 
 void htp_push_sync_inst_stream(HTPFrames &frames, uint32_t cpu_id) {

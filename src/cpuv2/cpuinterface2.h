@@ -34,15 +34,15 @@
 
 using isa::RVRegArray;
 
-typedef list<HTPFrame> HTPFrames;
+typedef std::deque<HTPFrame> HTPFrames;
 
 void htp_push_halt(HTPFrames &frames, uint32_t cpu_id);
 void htp_push_interrupt(HTPFrames &frames, uint32_t cpu_id);
-void htp_push_set_mmu(HTPFrames &frames, uint32_t cpu_id, PhysAddrT pgtable, AsidT asid);
+void htp_push_set_mmu(HTPFrames &frames, uint32_t cpu_id, PageIndexT pgtable, AsidT asid);
 void htp_push_redirect(HTPFrames &frames, uint32_t cpu_id, VirtAddrT addr);
 void htp_push_next(HTPFrames &frames);
 void htp_push_flush_tlb_all(HTPFrames &frames, uint32_t cpu_id);
-void htp_push_flush_tlb_vpgidx(HTPFrames &frames, uint32_t cpu_id, VirtAddrT vaddr, AsidT asid);
+void htp_push_flush_tlb_vpgidx(HTPFrames &frames, uint32_t cpu_id, VPageIndexT vpn, AsidT asid);
 void htp_push_sync_inst_stream(HTPFrames &frames, uint32_t cpu_id);
 void htp_push_regacc_read(HTPFrames &frames, uint32_t cpu_id, RVRegIndexT vreg);
 void htp_push_regacc_write(HTPFrames &frames, uint32_t cpu_id, RVRegIndexT vreg, RawDataT data);
@@ -80,14 +80,14 @@ public:
 
     virtual void halt(uint32_t cpu_id) = 0;
     virtual void interrupt(uint32_t cpu_id) = 0;
-    virtual void set_mmu(uint32_t cpu_id, PhysAddrT pgtable, AsidT asid) = 0;
+    virtual void set_mmu(uint32_t cpu_id, PageIndexT pgtable, AsidT asid) = 0;
     virtual void redirect(uint32_t cpu_id, VirtAddrT addr) = 0;
 
     virtual bool next(uint32_t *itr_cpu, VirtAddrT *itr_pc, uint32_t *itr_cause, RawDataT *itr_arg) = 0;
 
     virtual void flush_tlb_all(uint32_t cpu_id) = 0;
     virtual void flush_tlb_asid(uint32_t cpu_id, AsidT asid) = 0;
-    virtual void flush_tlb_vpgidx(uint32_t cpu_id, VirtAddrT vaddr, AsidT asid) = 0;
+    virtual void flush_tlb_vpgidx(uint32_t cpu_id, VPageIndexT vpn, AsidT asid) = 0;
 
     virtual void sync_inst_stream(uint32_t cpu_id) {};
 

@@ -194,7 +194,7 @@ bool test_serial_4(string dev_path) {
     htp_push_pxymem_write(frames, 0, 0x82003008UL, 0x06400893UL | (0x00000073UL << 32));
 
     printf("Setup MMU\n");
-    htp_push_set_mmu(frames, 0, 0x82000000UL, 0);
+    htp_push_set_mmu(frames, 0, 0x82000UL, 0);
 
     printf("Flush TLB\n");
     htp_push_flush_tlb_all(frames, 0);
@@ -351,7 +351,7 @@ bool test_serial_6(string dev_path) {
     }
 
     printf("Setup MMU\n");
-    dev->set_mmu(0, pt_base, 0);
+    dev->set_mmu(0, pt_base >> PAGE_ADDR_OFFSET, 0);
 
     printf("Flush TLB\n");
     dev->flush_tlb_all(0);
@@ -397,7 +397,7 @@ bool test_serial_6(string dev_path) {
         if(getchar() == '1') break;
     } while(true);
     printf("Flush TLB\n");
-    dev->flush_tlb_vpgidx(0, data_vpn << 12, 0);
+    dev->flush_tlb_vpgidx(0, data_vpn, 0);
 
     printf("Start ILA Trigger 3, and Type \"1\" to Continue...\n");
     do {
@@ -669,7 +669,7 @@ bool test_serial_4c1(string dev_path) {
 
     printf("Setup MMU\n");
     for(uint32_t i = 0; i < 4; i++) {
-        dev->set_mmu(i, pt_base, 0);
+        dev->set_mmu(i, pt_base >> PAGE_ADDR_OFFSET, 0);
     }
 
     printf("Flush TLB\n");
@@ -713,7 +713,7 @@ bool test_serial_4c1(string dev_path) {
 
     printf("Flush TLB\n");
     for(uint32_t i = 0; i < 4; i++) {
-        dev->flush_tlb_vpgidx(i, data_vpn << 12, 0);
+        dev->flush_tlb_vpgidx(i, data_vpn, 0);
     }
 
     printf("\nRedirect to VAddr 0x%lx\n", inst_vpn << 12);
@@ -806,7 +806,7 @@ bool test_serial_futex(string dev_path) {
     }
 
     printf("Setup MMU\n");
-    dev->set_mmu(0, pt_base, 0);
+    dev->set_mmu(0, pt_base >> PAGE_ADDR_OFFSET, 0);
 
     printf("Flush TLB\n");
     dev->flush_tlb_all(0);
@@ -833,7 +833,7 @@ bool test_serial_futex(string dev_path) {
     simroot_assert(dev->regacc_read(0, isa::ireg_index_of("a7")) == 98);
 
     printf("Flush TLB\n");
-    dev->flush_tlb_vpgidx(0, data_vpn << 12, 0);
+    dev->flush_tlb_vpgidx(0, data_vpn, 0);
     
     dev->hfutex_setmask(0, 0x10000UL);
 

@@ -25,14 +25,14 @@ public:
 
     virtual void halt(uint32_t cpu_id);
     virtual void interrupt(uint32_t cpu_id);
-    virtual void set_mmu(uint32_t cpu_id, PhysAddrT pgtable, AsidT asid);
+    virtual void set_mmu(uint32_t cpu_id, PageIndexT pgtable, AsidT asid);
     virtual void redirect(uint32_t cpu_id, VirtAddrT addr);
 
     virtual bool next(uint32_t *itr_cpu, VirtAddrT *itr_pc, uint32_t *itr_cause, RawDataT *itr_arg);
 
     virtual void flush_tlb_all(uint32_t cpu_id);
     virtual void flush_tlb_asid(uint32_t cpu_id, AsidT asid);
-    virtual void flush_tlb_vpgidx(uint32_t cpu_id, VirtAddrT vaddr, AsidT asid);
+    virtual void flush_tlb_vpgidx(uint32_t cpu_id, VPageIndexT vpn, AsidT asid);
 
     virtual RawDataT regacc_read(uint32_t cpu_id, RVRegIndexT vreg);
     virtual void regacc_write(uint32_t cpu_id, RVRegIndexT vreg, RawDataT data);

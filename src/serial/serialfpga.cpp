@@ -210,11 +210,11 @@ void SerialFPGAAdapter::interrupt(uint32_t cpu_id) {
     DEBUGOP("Interrupt");
 }
 
-void SerialFPGAAdapter::set_mmu(uint32_t cpu_id, PhysAddrT pgtable, AsidT asid) {
+void SerialFPGAAdapter::set_mmu(uint32_t cpu_id, PageIndexT pgtable, AsidT asid) {
     vector<uint8_t> buf, ret;
     _append_int(buf, cpu_id, 1);
     _append_int(buf, asid, 2);
-    _append_int(buf, pgtable >> PAGE_ADDR_OFFSET, 5);
+    _append_int(buf, pgtable, 5);
     int8_t value = _perform_op(SEROP_MMU, buf, ret);
     simroot_assertf(SEROP_MMU == value, "Operation SetMMU on Core %d (0x%lx, 0x%d) Failed: %d", cpu_id, pgtable >> PAGE_ADDR_OFFSET, asid, value);
     DEBUGOP("SetMMU (0x%lx, %d)", pgtable >> PAGE_ADDR_OFFSET, asid);
@@ -239,7 +239,7 @@ bool SerialFPGAAdapter::next(uint32_t *itr_cpu, VirtAddrT *itr_pc, uint32_t *itr
     *itr_arg = _pop_int(ret, 6);
     uint32_t cpu_id = *itr_cpu;
     DEBUGOP("Next -> (0x%lx, %d, 0x%lx)", *itr_pc, *itr_cause, *itr_arg);
-    return (*itr_cpu != 0xff);
+    return (*itr_cpu < CPUID_ALLHALT);
 }
 
 void SerialFPGAAdapter::flush_tlb_all(uint32_t cpu_id) {
@@ -250,7 +250,7 @@ void SerialFPGAAdapter::flush_tlb_all(uint32_t cpu_id) {
     DEBUGOP("FlushTLB");
 }
 
-void SerialFPGAAdapter::flush_tlb_vpgidx(uint32_t cpu_id, VirtAddrT vaddr, AsidT asid) {
+void SerialFPGAAdapter::flush_tlb_vpgidx(uint32_t cpu_id, VPageIndexT vpn, AsidT asid) {
     if(always_flush_all) {
         flush_tlb_all(cpu_id);
         return;
@@ -258,10 +258,10 @@ void SerialFPGAAdapter::flush_tlb_vpgidx(uint32_t cpu_id, VirtAddrT vaddr, AsidT
     vector<uint8_t> buf, ret;
     _append_int(buf, cpu_id, 1);
     _append_int(buf, asid, 2);
-    _append_int(buf, vaddr >> PAGE_ADDR_OFFSET, 5);
+    _append_int(buf, vpn, 5);
     int8_t value = _perform_op(SEROP_FTLB2, buf, ret);
-    simroot_assertf(SEROP_FTLB2 == value, "Operation FlushTLB2 on Core %d (%d, 0x%lx) Failed: %d", cpu_id, asid, vaddr >> PAGE_ADDR_OFFSET, value);
-    DEBUGOP("FlushTLB2 (%d, 0x%lx)", asid, vaddr >> PAGE_ADDR_OFFSET);
+    simroot_assertf(SEROP_FTLB2 == value, "Operation FlushTLB2 on Core %d (%d, 0x%lx) Failed: %d", cpu_id, asid, vpn, value);
+    DEBUGOP("FlushTLB2 (%d, 0x%lx)", asid, vpn);
 }
 
 

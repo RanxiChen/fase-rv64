@@ -115,8 +115,8 @@ void AtomicSMPCores::interrupt(uint32_t cpu_id){
     LOG_RUNTIME("Interrupt");
 }
 
-void AtomicSMPCores::set_mmu(uint32_t cpu_id, PhysAddrT pgtable, AsidT asid){
-    cores[cpu_id].pgtable = pgtable;
+void AtomicSMPCores::set_mmu(uint32_t cpu_id, PageIndexT pgtable, AsidT asid){
+    cores[cpu_id].pgtable = (pgtable << PAGE_ADDR_OFFSET);
     cores[cpu_id].asid = asid;
     LOG_RUNTIME("MMU(0x%lx, %d)", pgtable, asid);
 }
@@ -178,9 +178,9 @@ void AtomicSMPCores::flush_tlb_all(uint32_t cpu_id) {
 void AtomicSMPCores::flush_tlb_asid(uint32_t cpu_id, AsidT asid) {
     flush_tlb_all(cpu_id);
 }
-void AtomicSMPCores::flush_tlb_vpgidx(uint32_t cpu_id, VirtAddrT vaddr, AsidT asid) {
-    cores[cpu_id].tlb.erase(((vaddr & (~0xfffUL)) << 4) | (asid & 0xffffUL));
-    LOG_RUNTIME("Flush(0x%lx, %d)", vaddr, asid);
+void AtomicSMPCores::flush_tlb_vpgidx(uint32_t cpu_id, VPageIndexT vpn, AsidT asid) {
+    cores[cpu_id].tlb.erase((vpn << 12) | (asid & 0xffffUL));
+    LOG_RUNTIME("Flush(0x%lx, %d)", vpn, asid);
 }
 
 RawDataT AtomicSMPCores::regacc_read(uint32_t cpu_id, RVRegIndexT vreg) {

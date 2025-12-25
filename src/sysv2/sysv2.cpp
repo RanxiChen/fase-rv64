@@ -163,7 +163,7 @@ VirtAddrT SMPSystemV2::_pop_context_and_execute(uint32_t cpu_id) {
     AsidT asid = (using_asid?(thread->asid):0);
     PhysAddrT ptbase = thread->pgtable->get_page_table_base();
     if(((ptbase | asid) != last_running_mmu[cpu_id]) || (last_running_tids[cpu_id] != thread->tid)) {
-        htp_push_set_mmu(frames, cpu_id, ptbase, asid);
+        htp_push_set_mmu(frames, cpu_id, ptbase >> PAGE_ADDR_OFFSET, asid);
         htp_push_flush_tlb_all(frames, cpu_id);
         last_running_mmu[cpu_id] = (ptbase | asid);
         last_running_tids[cpu_id] = thread->tid;
@@ -309,7 +309,7 @@ bool SMPSystemV2::_check_vaddr_valid(uint32_t cpu_id, ThreadV2 *curt, VPageIndex
         _perform_target_pagecpy(cpu_id, cp);
     }
     for(auto fls : needflush) {
-        cpus->flush_tlb_vpgidx(cpu_id, fls << PAGE_ADDR_OFFSET, using_asid?(curt->asid):0);
+        cpus->flush_tlb_vpgidx(cpu_id, fls, using_asid?(curt->asid):0);
         // cpus->flush_tlb_all(cpu_id);
     }
     if(ppn) {
@@ -1013,7 +1013,7 @@ void SMPSystemV2::run_sim() {
         htp_push_next(frames);
         cpus->process_frames(frames);
         htp_pop_next(frames, &cpu_id, &pc, &cause, &arg);
-        not_all_halt = (cpu_id <= 127);
+        not_all_halt = (cpu_id < CPUID_ALLHALT);
     }
 
     uint64_t end_tick = cpus->get_current_tick();
@@ -2739,7 +2739,7 @@ VirtAddrT SMPSystemV2::_page_fault_rx(HTPFrames &frames, uint32_t cpu_id, VirtAd
             htp_push_flush_tlb_all(frames, cpu_id);
         } else {
             for(auto fls : needflush) {
-                htp_push_flush_tlb_vpgidx(frames, cpu_id, fls << PAGE_ADDR_OFFSET, using_asid?(CURT->asid):0);
+                htp_push_flush_tlb_vpgidx(frames, cpu_id, fls, using_asid?(CURT->asid):0);
             }
         }
         if(log_pgfault) { LOG_SYSCALL_2("page_fault_rx_alloc", "0x%lx", pc, "0x%lx", badaddr, "%d", 0); }
@@ -2752,7 +2752,7 @@ VirtAddrT SMPSystemV2::_page_fault_rx(HTPFrames &frames, uint32_t cpu_id, VirtAd
             htp_push_flush_tlb_all(frames, cpu_id);
         } else {
             for(auto fls : needflush) {
-                htp_push_flush_tlb_vpgidx(frames, cpu_id, fls << PAGE_ADDR_OFFSET, using_asid?(CURT->asid):0);
+                htp_push_flush_tlb_vpgidx(frames, cpu_id, fls, using_asid?(CURT->asid):0);
             }
         }
         
@@ -2764,7 +2764,7 @@ VirtAddrT SMPSystemV2::_page_fault_rx(HTPFrames &frames, uint32_t cpu_id, VirtAd
             return pc;
         }
         if(!isx && (pte & PTE_R)) {
-            htp_push_flush_tlb_vpgidx(frames, cpu_id, vpn << PAGE_ADDR_OFFSET, using_asid?(CURT->asid):0);
+            htp_push_flush_tlb_vpgidx(frames, cpu_id, vpn, using_asid?(CURT->asid):0);
             return pc;
         }
     }
@@ -2785,7 +2785,7 @@ VirtAddrT SMPSystemV2::_page_fault_w(HTPFrames &frames, uint32_t cpu_id, VirtAdd
     if(!(pte & PTE_V) && CURT->pgtable->apply_cow_nonalloc(vpn << PAGE_ADDR_OFFSET, &stlist, &cplist, &needflush)) {
         target_memops_to_htp_frame(frames, cpu_id, stlist, cplist);
         for(auto fls : needflush) {
-            htp_push_flush_tlb_vpgidx(frames, cpu_id, fls << PAGE_ADDR_OFFSET, using_asid?(CURT->asid):0);
+            htp_push_flush_tlb_vpgidx(frames, cpu_id, fls, using_asid?(CURT->asid):0);
         }
         if(log_pgfault) { LOG_SYSCALL_2("page_fault_w_alloc", "0x%lx", pc, "0x%lx", badaddr, "%d", 0); }
         return pc;
@@ -2794,12 +2794,12 @@ VirtAddrT SMPSystemV2::_page_fault_w(HTPFrames &frames, uint32_t cpu_id, VirtAdd
         CURT->pgtable->apply_cow(vpn << PAGE_ADDR_OFFSET, &stlist, &cplist, &needflush);
         target_memops_to_htp_frame(frames, cpu_id, stlist, cplist);
         for(auto fls : needflush) {
-            htp_push_flush_tlb_vpgidx(frames, cpu_id, fls << PAGE_ADDR_OFFSET, using_asid?(CURT->asid):0);
+            htp_push_flush_tlb_vpgidx(frames, cpu_id, fls, using_asid?(CURT->asid):0);
         }
         if(log_pgfault) { LOG_SYSCALL_2("page_fault_w", "0x%lx", pc, "0x%lx", badaddr, "%d", 0); }
         return pc;
     } else if(pte & (PTE_V | PTE_W)) {
-        htp_push_flush_tlb_vpgidx(frames, cpu_id, vpn << PAGE_ADDR_OFFSET, using_asid?(CURT->asid):0);
+        htp_push_flush_tlb_vpgidx(frames, cpu_id, vpn, using_asid?(CURT->asid):0);
         return pc;
     }
 
