@@ -264,13 +264,13 @@ void AtomicSMPCores::process_frames(HTPFrames &frames) {
             this->sync_inst_stream(f.cpuid);
             break;
         case HTOP::regrd:
-            f.x2 = this->regacc_read(f.cpuid, f.x1);
+            f.x1 = this->regacc_read(f.cpuid, f.x1);
             break;
         case HTOP::regwt:
             this->regacc_write(f.cpuid, f.x1, f.x2);
             break;
         case HTOP::memrd:
-            f.x2 = this->pxymem_read(f.cpuid, f.x1);
+            f.x1 = this->pxymem_read(f.cpuid, f.x1);
             break;
         case HTOP::memwt:
             this->pxymem_write(f.cpuid, f.x1, f.x2);

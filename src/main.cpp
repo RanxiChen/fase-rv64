@@ -134,6 +134,12 @@ void execution() {
         TEST(mpser(S[0], W, E));
     });
 
+    OPERATION(op, "uds", {
+        ASSERT_MORE_ARGS(W, 1, "elf_path")
+        ASSERT_MORE_ARGS(S, 1, "udspath")
+        TEST(mpudsocket(S[0], W, E));
+    });
+
 
     OPERATION(op, "test1", {
         ASSERT_MORE_ARGS(S, 1, "dev_path")

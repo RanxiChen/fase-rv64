@@ -5,6 +5,8 @@
 
 #include "serial/serialfpga.h"
 
+#include "udsocket/udsocket.h"
+
 #include "simroot.h"
 #include "configuration.h"
 
@@ -77,6 +79,32 @@ bool mpser(string devpath, vector<string> &argv, vector<string> &envs) {
 
     shared_ptr<SerialFPGAAdapter> hardwares = make_shared<SerialFPGAAdapter>(devpath, baudrate);
     simroot::add_trace_object(hardwares.get(), "FPGA");
+    
+    shared_ptr<SMPSystemV2> sys = make_shared<SMPSystemV2>(workload, hardwares.get(), cpu_num, mem_base, mem_size);
+
+    sys->run_sim();
+
+    printf("Simulation Finished with %ld Ticks\n", hardwares->get_current_tick());
+    
+    simroot::print_statistic();
+
+    return true;
+}
+
+bool mpudsocket(string udspath, vector<string> &argv, vector<string> &envs) {
+    SimWorkload workload;
+    parse_workload(workload, argv, envs);
+
+    uint32_t cpu_num = conf::get_int("root", "core_num", 1);
+    simroot_assert(cpu_num > 0 && cpu_num <= 128);
+    uint64_t mem_size = conf::get_int("root", "memory_size_mb", 1500);
+    simroot_assert(mem_size > 0 && mem_size <= 256*1024);
+    mem_size = (mem_size << 20);
+    uint64_t mem_base = conf::get_inthex("root", "memory_base_addr_hex", 0);
+    simroot_assert((mem_base % PAGE_LEN_BYTE) == 0);
+
+    shared_ptr<UDSocketAdapter> hardwares = make_shared<UDSocketAdapter>(udspath);
+    simroot::add_trace_object(hardwares.get(), "UDSocket");
     
     shared_ptr<SMPSystemV2> sys = make_shared<SMPSystemV2>(workload, hardwares.get(), cpu_num, mem_base, mem_size);
 

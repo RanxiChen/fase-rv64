@@ -200,7 +200,7 @@ void htp_pop_regacc_read(HTPFrames &frames, RawDataT *data) {
         frames.pop_front();
     }
     auto &pop = frames.front();
-    *data = pop.x2;
+    *data = pop.x1;
     frames.pop_front();
 }
 
@@ -211,7 +211,7 @@ void htp_pop_pxymem_read(HTPFrames &frames, RawDataT *data) {
         frames.pop_front();
     }
     auto &pop = frames.front();
-    *data = pop.x2;
+    *data = pop.x1;
     frames.pop_front();
 }
 

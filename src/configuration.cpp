@@ -92,7 +92,7 @@ void load_ini_file(string filepath) {
 int64_t get_int(string sec, string name, int64_t def) {
     string ret = get_str(sec, name, "x");
     try {
-        return std::stoll(ret);
+        return std::stoll(ret, nullptr, 0);
     } catch(...) {
         return def;
     }
@@ -101,7 +101,7 @@ int64_t get_int(string sec, string name, int64_t def) {
 int64_t get_inthex(string sec, string name, int64_t def) {
     string ret = get_str(sec, name, "x");
     try {
-        return std::stoll(ret, nullptr, 16);
+        return std::stoll(ret, nullptr, 0);
     } catch(...) {
         return def;
     }

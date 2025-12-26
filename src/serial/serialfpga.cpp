@@ -580,14 +580,14 @@ void SerialFPGAAdapter::_recv_frame(BufT &buf, HTPFrame &frame) {
         DEBUGOP("S-Noret");
         break;
     case HTOP::regrd:
-        frame.x2 = _pop_int(buf, 8);
-        DEBUGOP("S-RegRead -> 0x%lx", frame.x2);
+        frame.x1 = _pop_int(buf, 8);
+        DEBUGOP("S-RegRead -> 0x%lx", frame.x1);
         break;
     case HTOP::regwt:
         break;
     case HTOP::memrd:
-        frame.x2 = _pop_int(buf, 8);
-        DEBUGOP("S-MemRead -> 0x%lx", frame.x2);
+        frame.x1 = _pop_int(buf, 8);
+        DEBUGOP("S-MemRead -> 0x%lx", frame.x1);
         break;
     case HTOP::memwt:
     case HTOP::pgst:
