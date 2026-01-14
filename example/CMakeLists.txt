@@ -11,7 +11,7 @@ else()
     set(CMAKE_ASM_COMPILER riscv64-linux-gnu-gcc)
 endif()
 
-set(CMAKE_C_FLAGS "-Wall -g -O2 -static -static-libgcc")
+set(CMAKE_C_FLAGS "-Wall -g -O2 -static -static-libgcc -march=rv64gc")
 set(CMAKE_CXX_FLAGS ${CMAKE_C_FLAGS} )
 set(CMAKE_ASM_FLAGS ${CMAKE_C_FLAGS} )
 
