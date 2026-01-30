@@ -625,6 +625,34 @@ void SerialFPGAAdapter::_perform_pgrdwt_frame(HTPFrame &frame) {
     }
 }
 
+bool SerialFPGAAdapter::test_uart(uint8_t* data,uint32_t len, bool chunk = false) {
+    int8_t test_uart_op = SEROP_UART;
+    _write_serial(&test_uart_op, 1);
+    if (chunk == false) {
+        //send byte by bytes
+        for (uint32_t i = 0; i < len; i++) {
+            _write_serial(&data[i], 1);
+            uint8_t buf = 0xff;
+            _read_serial(&buf, 1);
+            simroot_assert(buf == data[i]);
+            if (data[i] == UART_TEST_END) {
+                _read_serial(&buf, 1);
+                simroot_assert(buf == SEROP_UART);
+                return true;
+            }
+        }
+        // manual provide END
+        uint8_t end = UART_TEST_END;
+        _write_serial(&end, 1);
+        uint8_t buf = 0xff;
+        _read_serial(&buf, 1);
+        simroot_assert(buf == SEROP_UART);
+        return true;
+    }
+    return false;
+}
+
+
 void SerialFPGAAdapter::dump_core(std::ofstream &ofile) {
     // char logbuf[256];
     // if(dumping_no_error) return;

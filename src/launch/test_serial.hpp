@@ -893,3 +893,26 @@ bool test_serial_futex(string dev_path) {
 
 }
 
+bool test_serial_uart(string dev_path) {
+
+    string target = conf::get_str("test", "target", "serial");
+
+    uint32_t baudrate = conf::get_int("serial", "baudrate", 115200);
+
+    uint64_t mem_base = conf::get_inthex("root", "memory_base_addr_hex", 0);
+    simroot_assert((mem_base % PAGE_LEN_BYTE) == 0);
+    simroot_assert(mem_base >= 0x80000000UL);
+
+    unique_ptr<CPUGroupInterface> dev = create_test_device(dev_path);
+    SerialFPGAAdapter* dev_uart = dynamic_cast<SerialFPGAAdapter*>(dev.get());
+    simroot_assert(dev_uart != nullptr);
+
+    printf("Check Whether set correct UART Baudrate\n");
+    // Single Byte test
+    uint8_t single_case = 0x55;
+    dev_uart -> test_uart(&single_case,1,false);
+
+    printf("UART Baudrate Check PASSED\n");
+    return true;
+}
+

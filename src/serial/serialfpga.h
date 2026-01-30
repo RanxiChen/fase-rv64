@@ -54,6 +54,13 @@ public:
     virtual void dump_core(std::ofstream &ofile);
     virtual void set_debug(bool on) { debug_op = on; };
 
+    /***
+     * additional functions, just used for uart
+     */
+    uint8_t SEROP_UART = 21;
+    uint8_t UART_TEST_END = 0xff;
+    bool test_uart(uint8_t* data, uint32_t len,bool chunk);
+
 private:
 
     int32_t fd = 0;

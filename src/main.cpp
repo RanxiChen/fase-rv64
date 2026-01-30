@@ -209,6 +209,11 @@ void execution() {
         TEST(test::test_ini_file());
     });
 
+    OPERATION(op, "test_uart", {
+        ASSERT_MORE_ARGS(S, 1, "dev_path")
+        TEST(test_serial_uart(S[0]));
+    });
+
 }
 
 
