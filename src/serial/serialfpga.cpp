@@ -70,6 +70,10 @@ SerialFPGAAdapter::SerialFPGAAdapter(string devfile, uint32_t baudrate) {
     tio.c_cflag |= CS8;
     tio.c_cflag &= ~PARENB;
     tio.c_cflag &= ~CSTOPB;
+    tio.c_cflag &= ~CRTSCTS;  // no hardware flow control
+
+    tio.c_iflag &= ~(IXON|IXOFF|IXANY);
+    tio.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL);
 
     tio.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
     tio.c_oflag &= ~OPOST;
