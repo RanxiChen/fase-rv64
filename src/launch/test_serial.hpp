@@ -911,6 +911,13 @@ bool test_serial_uart(string dev_path) {
     // Single Byte test
     uint8_t single_case = 0x55;
     dev_uart -> test_uart(&single_case,1,false);
+    // send multi-byte
+    uint8_t* multi_case = (uint8_t*)malloc(16*sizeof(uint8_t));
+    for(int i=0;i<16;i++){
+        multi_case[i] = (uint8_t)(i*11);
+    }
+    dev_uart -> test_uart(multi_case,16,false);
+    free(multi_case);
 
     printf("UART Baudrate Check PASSED\n");
     return true;

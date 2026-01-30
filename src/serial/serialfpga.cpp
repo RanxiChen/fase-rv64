@@ -634,11 +634,9 @@ bool SerialFPGAAdapter::test_uart(uint8_t* data,uint32_t len, bool chunk = false
             _write_serial(&data[i], 1);
             uint8_t buf = 0xff;
             _read_serial(&buf, 1);
-            printf("Read %d\n", buf);
             simroot_assert(buf == data[i]);
             if (data[i] == UART_TEST_END) {
                 _read_serial(&buf, 1);
-                printf("Read %d\n", buf);
                 simroot_assert(buf == SEROP_UART);
                 return true;
             }
@@ -646,7 +644,9 @@ bool SerialFPGAAdapter::test_uart(uint8_t* data,uint32_t len, bool chunk = false
         // manual provide END
         uint8_t end = UART_TEST_END;
         _write_serial(&end, 1);
-        uint8_t buf = 0xff;
+        uint8_t buf = 0x0;
+        _read_serial(&buf, 1);
+        simroot_assert(buf == UART_TEST_END);
         _read_serial(&buf, 1);
         simroot_assert(buf == SEROP_UART);
         return true;
