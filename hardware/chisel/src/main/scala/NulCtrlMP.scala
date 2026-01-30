@@ -25,7 +25,8 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
         val cpu_state = Output(UInt(8.W))
         val opcode   = Output(UInt(8.W))
         val rx_data  = Output(UInt(8.W))
-      val buildTime = Output(UInt(64.W))
+        val buildTime = Output(UInt(64.W))
+        val uart_buf = Output(UInt(8.W))
     })
 
     io.rx.ready := false.B
@@ -102,6 +103,7 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
     val SEROP_HFSET = 18.U  //  OP[8]       ID[8] VA[48]           -> ACK[8]
     val SEROP_HFCLR = 19.U  //  OP[8]       ID[8]                  -> ACK[8]
     val SEROP_PGZERO = 20.U //  OP[8]       ID[8] PPN[40]          -> ACK[8]
+    val SEROP_UART   = 21.U //  OP[8]       VAR LEN DATA           -> ACK[8]
     val SEROP_INST  = 30.U
 
     val STATE_INIT_WAIT     = 0.U 
@@ -130,7 +132,8 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
     val STATE_PGCP          = 21.U 
     val STATE_SYNCI         = 22.U 
     val STATE_INST          = 23.U 
-    val STATE_HFUTEX        = 24.U 
+    val STATE_HFUTEX        = 24.U
+    val STATE_UART          = 25.U
 
     val STATE_SLEEP         = 31.U 
 
@@ -162,6 +165,9 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
     val hfutex_set_value = Cat(oparg(7), oparg(6), oparg(5), oparg(4), oparg(3), oparg(2))
     val hfutex_hit = hfutex_masks(opidx).map(_ === hfutex_match_reg).reduce(_ || _)
     val hfutex_hit_set = hfutex_masks(opidx).map(_ === hfutex_set_value).reduce(_ || _)
+
+    val send_hear = RegInit(false.B) // true when sending header
+    val uart_buffer = RegInit(0.U(8.W))
     
     val sleep_cnt = RegInit(0.U(4.W))
     when(state === STATE_SLEEP) {
@@ -199,7 +205,7 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
                 trans_bytes := 15.U 
             }.elsewhen(rxop === SEROP_MEMWT) {
                 trans_bytes := 16.U 
-            }.elsewhen(rxop === SEROP_NEXT || rxop === SEROP_CLK) {
+            }.elsewhen(rxop === SEROP_NEXT || rxop === SEROP_CLK || rxop === SEROP_UART) {
                 state := STATE_DO_OP
                 trans_bytes := 1.U 
             } .otherwise {
@@ -281,6 +287,10 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
                 }
             }
             is(SEROP_INST) { state := STATE_INST }
+            is(SEROP_UART) {
+              state := STATE_UART
+              send_hear := false.B
+            }
         }
     }.elsewhen(state === STATE_RECV_ARG && io.rx.valid) {
         oparg(trans_pos) := io.rx.bits
@@ -920,6 +930,32 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
             wt_byte_cnt := 0.U 
         }
     }
+  val UART_TEST_END = 0xFF.U(8.W)
+  /**
+   * add uart test mode
+   * when recieve SEROP_UART, will send any char back until recieve UART_TEST_END
+   */
+  when(state === STATE_UART){
+    when(send_hear){
+      //send
+      io.tx.valid := true.B
+      io.tx.bits := uart_buffer
+      when(io.tx.fire){
+        send_hear := false.B
+        uart_buffer := 0.U
+        when(io.tx.bits === UART_TEST_END){
+          state := STATE_SEND_HEAD
+        }
+      }
+    }.otherwise{
+      //receive
+      io.rx.ready := true.B
+      when(io.rx.fire){
+        uart_buffer := io.rx.bits
+        send_hear := true.B
+      }
+    }
+  }
   io.state := state
   io.cpu_state := cpu_state(0).asUInt
   io.opcode := Cat(opoff, opcode)
@@ -927,6 +963,7 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
   val buildTime = System.currentTimeMillis()
   io.buildTime := buildTime.U(64.W)
   dontTouch(io.buildTime)
+  io.uart_buf := uart_buffer
 
 }
 
@@ -936,13 +973,14 @@ class NulCPUCtrlMPWithUart(cpunum: Int, frequency: Int, baudRate: Int) extends M
         val txd     = Output(UInt(1.W))
         val rxd     = Input(UInt(1.W))
         val dbg_sta = Output(UInt(8.W))
-      val state   = Output(UInt(8.W))
-      val cpu_state = Output(UInt(8.W))
-      val opcode  = Output(UInt(8.W))
-      val rx_data = Output(UInt(8.W))
-      val rx_buf = Output(UInt(16.W))
-      val rx_in = Output(UInt(2.W))
-      val rx_queue_in = Output(UInt(8.W))
+        val state   = Output(UInt(8.W))
+        val cpu_state = Output(UInt(8.W))
+        val opcode  = Output(UInt(8.W))
+        val rx_data = Output(UInt(8.W))
+        val rx_buf = Output(UInt(16.W))
+        val rx_in = Output(UInt(2.W))
+        val rx_queue_in = Output(UInt(8.W))
+        val uart_buf = Output(UInt(8.W))
     })
 
     val ctrl = Module(new NulCPUCtrlMP(cpunum))
@@ -952,14 +990,15 @@ class NulCPUCtrlMPWithUart(cpunum: Int, frequency: Int, baudRate: Int) extends M
     val txbuffer = Module(new Queue(UInt(8.W), 64))
 
     io.dbg_sta := ctrl.io.dbg_sta
-  io.state := ctrl.io.state
-  io.cpu_state := ctrl.io.cpu_state
-  io.opcode := ctrl.io.opcode
-  io.rx_data := ctrl.io.rx_data
-  io.rx_buf := rxbuffer.io.count.asUInt
-  io.rx_in := Cat(!io.rxd, rx.io.rxd)
-  io.rx_queue_in := rxbuffer.io.enq.bits
-  println(s"Core ${cpunum}-Freq ${frequency}Hz-BaudRate ${baudRate}bps UART NulCPUCtrlMPWithUart")
+    io.state := ctrl.io.state
+    io.cpu_state := ctrl.io.cpu_state
+    io.opcode := ctrl.io.opcode
+    io.rx_data := ctrl.io.rx_data
+    io.rx_buf := rxbuffer.io.count.asUInt
+    io.rx_in := Cat(!io.rxd, rx.io.rxd)
+    io.rx_queue_in := rxbuffer.io.enq.bits
+    io.uart_buf := ctrl.io.uart_buf
+    println(s"Core ${cpunum}-Freq ${frequency}Hz-BaudRate ${baudRate}bps UART NulCPUCtrlMPWithUart")
 
     io.cpu <> ctrl.io.cpu 
     io.txd := tx.io.txd 
