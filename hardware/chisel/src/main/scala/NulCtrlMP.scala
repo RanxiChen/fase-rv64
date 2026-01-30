@@ -21,6 +21,11 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
         val tx      = new UartIO()
         val rx      = Flipped(new UartIO())
         val dbg_sta = Output(UInt(8.W))
+        val state   = Output(UInt(8.W))
+        val cpu_state = Output(UInt(8.W))
+        val opcode   = Output(UInt(8.W))
+        val rx_data  = Output(UInt(8.W))
+      val buildTime = Output(UInt(64.W))
     })
 
     io.rx.ready := false.B
@@ -915,6 +920,13 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
             wt_byte_cnt := 0.U 
         }
     }
+  io.state := state
+  io.cpu_state := cpu_state(0).asUInt
+  io.opcode := Cat(opoff, opcode)
+  io.rx_data := io.rx.bits
+  val buildTime = System.currentTimeMillis()
+  io.buildTime := buildTime.U(64.W)
+  dontTouch(io.buildTime)
 
 }
 
@@ -924,6 +936,13 @@ class NulCPUCtrlMPWithUart(cpunum: Int, frequency: Int, baudRate: Int) extends M
         val txd     = Output(UInt(1.W))
         val rxd     = Input(UInt(1.W))
         val dbg_sta = Output(UInt(8.W))
+      val state   = Output(UInt(8.W))
+      val cpu_state = Output(UInt(8.W))
+      val opcode  = Output(UInt(8.W))
+      val rx_data = Output(UInt(8.W))
+      val rx_buf = Output(UInt(16.W))
+      val rx_in = Output(UInt(2.W))
+      val rx_queue_in = Output(UInt(8.W))
     })
 
     val ctrl = Module(new NulCPUCtrlMP(cpunum))
@@ -933,6 +952,14 @@ class NulCPUCtrlMPWithUart(cpunum: Int, frequency: Int, baudRate: Int) extends M
     val txbuffer = Module(new Queue(UInt(8.W), 64))
 
     io.dbg_sta := ctrl.io.dbg_sta
+  io.state := ctrl.io.state
+  io.cpu_state := ctrl.io.cpu_state
+  io.opcode := ctrl.io.opcode
+  io.rx_data := ctrl.io.rx_data
+  io.rx_buf := rxbuffer.io.count.asUInt
+  io.rx_in := Cat(!io.rxd, rx.io.rxd)
+  io.rx_queue_in := rxbuffer.io.enq.bits
+  println(s"Core ${cpunum}-Freq ${frequency}Hz-BaudRate ${baudRate}bps UART NulCPUCtrlMPWithUart")
 
     io.cpu <> ctrl.io.cpu 
     io.txd := tx.io.txd 
@@ -946,4 +973,16 @@ class NulCPUCtrlMPWithUart(cpunum: Int, frequency: Int, baudRate: Int) extends M
 object NulCPUCtrlUartMPMain extends App {
     println("Generating the NulCPUCtrlMPUart hardware")
     emitVerilog(new NulCPUCtrlMPWithUart(4, 100000000, 460800), Array("--target-dir", "generated"))
+}
+
+object NulCPUCtrlUartMPSelMain extends App {
+  println("Generating the NulCPUCtrlMPUart hardware, Just clean design, no addtional logic")
+  if(args.length != 2) {
+    println("Usage : sbt \"runMain nulctrl.NulCPUCtrlUartMPSelMain <CPU Number> <Bps mul 115200>\"")
+  } else {
+    val cpunum = args(0).toInt
+    val bps = args(1).toInt * 115200
+    println(s"Generate ${cpunum} CPU design, Bps: ${bps}")
+    emitVerilog(new NulCPUCtrlMPWithUart(cpunum, 100000000, bps), Array("--target-dir", "generated"))
+  }
 }
