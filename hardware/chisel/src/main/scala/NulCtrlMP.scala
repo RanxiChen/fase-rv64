@@ -518,7 +518,7 @@ class NulCPUCtrlMP(cpunum: Int) extends Module {
         backup_regs(0, 1)
         when(cnt(1)) { invoke_inst(("he20002d3".U) | (oparg(2)(4, 0) << 15)) } // fmv.x.d x5, fn
         when(cnt(2)) { wait_inst() }
-        when(cnt(3)) { read_reg_to_retarg(0, 2, 8) }
+        when(cnt(3)) { read_reg_to_retarg(0, 0, 8) }
         recover_regs(4, 1)
         when(cnt(5)) {
             cnt := 1.U 

@@ -17,6 +17,7 @@ def main():
         ("fast", ["--latency", "0", "--stall", "0"], 0, "PASS suite"),
         ("default", ["--latency", "2", "--stall", "3"], 0, "PASS suite"),
         ("stalled", ["--latency", "7", "--stall", "5"], 0, "PASS suite"),
+        ("fp-readback", ["--probe-fp"], 0, "PASS floating-point register readback"),
         ("checker-negative", ["--corrupt-addi"], 1, "FAIL injected addi expected 11, actual 0xc"),
     ]
     for name, options, expected_rc, marker in cases:
