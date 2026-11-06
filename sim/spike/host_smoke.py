@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the unmodified FASE Host against controller RTL and Spike on a PTY."""
+"""Run FASE Host's normal serial path against controller RTL and Spike on a PTY."""
 import argparse
 from pathlib import Path
 import subprocess
@@ -31,11 +31,18 @@ def main():
                     raise RuntimeError("simulation server did not start; see server.log")
                 time.sleep(0.05)
             serial_path = path_file.read_text().strip()
-            with (run / "host.log").open("w") as host_log:
+            try:
                 result = subprocess.run([
                     str(args.host.resolve()), "serial", "-c", str(args.config.resolve()),
                     "-s", serial_path, "-w", str(args.elf.resolve())],
-                    stdout=host_log, stderr=subprocess.STDOUT, cwd=run, timeout=120)
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=run, timeout=120)
+            except subprocess.TimeoutExpired as error:
+                (run / "host.log").write_bytes(error.output or b"")
+                raise
+            # Capture via a pipe: the Host's syscall implementation may lseek
+            # stdout, so directly sharing the log file would let it overwrite
+            # earlier diagnostic output.
+            (run / "host.log").write_bytes(result.stdout)
             if result.returncode:
                 raise RuntimeError(f"FASE Host exited {result.returncode}; see host.log")
             output = (run / "host.log").read_text()
@@ -53,7 +60,7 @@ def main():
             raise RuntimeError(f"simulation server exited {server.returncode}; see server.log")
     if "a0=0x0" not in (run / "server.log").read_text():
         raise RuntimeError("target did not exit with a0=0")
-    print("PASS original FASE Host -> SerialFPGAAdapter -> controller RTL -> Spike")
+    print("PASS FASE Host -> SerialFPGAAdapter -> controller RTL -> Spike")
     print("PASS ELF loading, Sv39, write return value, exit, all-halted completion")
 
 

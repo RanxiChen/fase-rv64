@@ -10,7 +10,7 @@
   -> Spike 单核及仿真内存
 ```
 
-`NulCtrlMP.scala` 和 `port.scala` 保持原样。仿真入口只去掉 UART PHY，直接连接控制器已有的字节 ready/valid 接口。通过伪串口运行时，原 Host、命令编码、ELF 装载、页表管理和 syscall 处理代码也保持原样。
+仿真入口只去掉 UART PHY，直接连接控制器已有的字节 ready/valid 接口。集成基线提交 `21422fcd552efcd08381df19e82fba035c3dd040` 保持原控制器和 Host 源码不变，复现了下述问题。后续修正保留同一条验证链路；控制器和 Host 的具体修正另行列出。`port.scala` 未改。
 
 ## 固定版本与位置
 
@@ -54,7 +54,7 @@ bash sim/spike/host_smoke.sh
 
 这些检查既读取 FASE 返回值，也直接检查 Spike 中的寄存器和内存。`--corrupt-addi` 故意在适配层将 ADDI 的立即数改为 2，正确行为是退出 1 并报告期望 11、实际 12，以验证检查器确实能发现错误。
 
-`host_smoke.sh` 用原 FASE Host 加载 `hello.S` 编译的 ELF。目标通过 `write` 输出 `FASE_SPIKE_HOST_HELLO`，检查 syscall 返回的字节数，然后 `exit(0)`。脚本要求 Host 正常结束、出现实际程序输出、仿真端 a0 为 0，并保存两端日志。每次创建独立的运行目录。
+`host_smoke.sh` 用 FASE Host 的正常串口路径加载 `hello.S` 编译的 ELF。目标通过 `write` 输出 `FASE_SPIKE_HOST_HELLO`，检查 syscall 返回的字节数，然后 `exit(0)`。脚本要求 Host 正常结束、出现实际程序输出、仿真端 a0 为 0，并保存两端日志。每次创建独立的运行目录。
 
 ## 已发现的失败：浮点寄存器 REGRD 回复偏移
 
@@ -67,9 +67,9 @@ bash sim/spike/host_smoke.sh
   --insn-log /home/chen/FUN/fase-spike-runs/20261106/rtl/fp-minimal-insns.log
 ```
 
-测试通过 FASE 将 `f3` 写为 `0x0123456789abcdef`，再单独注入 `fmv.x.d x5,f3`，确认 Spike 实际保存了该值，最后发出 FASE 浮点 REGRD。原实现应在这里暴露读回不一致，进程退出 1。
+测试通过 FASE 将 `f3` 写为 `0x0123456789abcdef`，再单独注入 `fmv.x.d x5,f3`，确认 Spike 实际保存了该值，最后发出 FASE 浮点 REGRD。集成基线在这里返回 `0x456789abcdef0000`，进程退出 1；修正后的版本通过。
 
-源码依据：`NulCtrlMP.scala` 的浮点 `STATE_REGRD` 分支调用 `read_reg_to_retarg(0, 2, 8)`，将 8 字节写入 `retarg[2..9]`；REGRD 回复却发送 `retarg[0..7]`。返回值因此带两个旧字节，并丢掉最高两个字节。复现前序不同，两个旧字节也可能不同。这一失败单独报告，不计为基本检查通过，也没有通过改动原控制器来隐藏它。
+源码依据：原 `NulCtrlMP.scala` 的浮点 `STATE_REGRD` 分支调用 `read_reg_to_retarg(0, 2, 8)`，将 8 字节写入 `retarg[2..9]`；REGRD 回复却发送 `retarg[0..7]`。返回值因此带两个旧字节，并丢掉最高两个字节。复现前序不同，两个旧字节也可能不同。修正将写入位置改为 0；原失败日志保留为 `rtl/fp-minimal-test.log`，修正后同一测试在 `regression-after-two-fixes/fp-readback.log` 通过。
 
 ## 已发现的失败：批量 MMU 命令重复转换页号
 
@@ -78,6 +78,30 @@ bash sim/spike/host_smoke.sh
 调用链中 `SMPSystemV2::_pop_context_and_execute` 先将物理地址右移 12 位，`htp_push_set_mmu` 将页号原样放入 `frame.x2`，但 `SerialFPGAAdapter::_send_frame` 的 MMU 分支再次右移 12 位后发送。直接调用 `SerialFPGAAdapter::set_mmu` 则发送未再次右移的页号。该问题发生在原 Host 的批量编码路径，基本测试驱动不经过它，所以必须单独跑原 Host。
 
 原版证据保存在 Alan 默认证据目录下 `host-smoke-3/host.log`、`server.log`、`instructions.log`。早期 `host-smoke-1` 的 SFENCE 失败属于适配层未启用 Sv39，不计为 FASE 缺陷；适配层修正后的 `host-smoke-2/3` 才复现上述地址问题。
+
+修正仅删除 `_send_frame` 的 MMU 分支对 `frame.x2` 的重复右移。修正后 `host-smoke-fixed/instructions.log` 显示 `satp=0x8000000000080000`，页表遍历得到 RAM 中的正确页表，程序执行到 `write`。
+
+## 已发现的失败：标准文件描述符初始化对象错误
+
+修正 MMU 后，原 Host 的 `write(1, ..., 22)` 返回错误，目标程序因返回值校验失败执行 EBREAK。证据为 `host-smoke-fixed/host.log` 和 `instructions.log`。
+
+原 `ThreadV2` 构造函数创建 `fd1`、`fd2` 后仍反复写 `fd0` 的字段，并将 `fd0` 放入 fd 2 的映射：stdout 对象没有初始化，stdin 对象被覆盖，stderr 映射也错误。修正分别初始化 `fd1`、`fd2`，并把 fd 2 映射到 `fd2`。该修改不改变 syscall 的实现策略。
+
+修正后 `host-smoke-stdio-fixed/` 的测试通过：目标实际输出测试文字，`write` 返回 22，随后 `exit(0)`，Host 收到 all-halted 结果并结束。该运行使用上述三个已记录的修正，不将未修正基线描述为端到端通过。
+
+## 本次验证结果
+
+| 检查 | 结果 | Alan 默认证据目录下的位置 |
+| --- | --- | --- |
+| 原基线整数/内存/基本事件，三组延迟 | 通过 | `regression-before/` |
+| 检查器故意破坏 ADDI | 按预期检出错误 | 两个 regression 目录的 `checker-negative.log` |
+| 原基线浮点读回 | 失败，已修正 | `rtl/fp-minimal-test.log` |
+| 修正后整数/内存/基本事件和浮点读回 | 通过 | `regression-after-two-fixes/` |
+| 原 Host 批量 MMU 设置 | 失败，已修正 | `host-smoke-3/` |
+| 修正 MMU 后的 stdout 写出 | 失败，已修正 | `host-smoke-fixed/` |
+| 三处修正后，Host 加载 ELF 并完成 write/exit | 通过 | `host-smoke-stdio-fixed/` |
+
+这里的通过仅对应列出的测试、版本和功能模型。尚未完成多核、完整 syscall、任意程序或真实 CPU 接口时序验证。
 
 ## 功能模型的边界
 
